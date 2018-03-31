@@ -15,7 +15,7 @@
 ## Attributions
 
 ## License
-
+MIT
 ## Credits
 
 Authors: Michał Andrzejewski, Łukasz Dawydzik
