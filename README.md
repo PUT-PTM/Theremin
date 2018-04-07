@@ -5,6 +5,8 @@
 ## Description
 
 ## Tools
+- STM32F4 Discovery
+- Ultrasonic Ranging Module HC-SR04 x2
 
 ## How to run
 
