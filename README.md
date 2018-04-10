@@ -1,6 +1,7 @@
 # Theremin
 
 ## Overview
+Theremin based on microcontroller and sensors. But what it is? Theremin is an electronic musical instrument controlled without physical contact by the performer. Sounds cool? It is even cooler. If Mozart was still alive, he would play theremin.
 
 ## Description
 
