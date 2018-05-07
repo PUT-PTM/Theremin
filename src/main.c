@@ -5,10 +5,8 @@
 #include "stm32f4xx_spi.h"
 #include "stm32f4xx_i2c.h"
 
-float Distance;
-unsigned int TIM2_CNT;
-unsigned int TIM4_CNT;
-unsigned int a, b;
+float DistanceA, DistanceB;
+unsigned int a, b, c, d;
 
 void Delay(uint32_t i) {
 	static uint32_t ij = 0, j = 0;
@@ -20,67 +18,77 @@ void deklaracje(void) {
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
 
 	//Trigger, podlaczony poki co do zielonej diody, zeby ladnie bylo widac czy idzie sygnal wysoki, czy nie.
-	GPIO_InitTypeDef GPIO_InitStructure;
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_14 | GPIO_Pin_15;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	GPIO_Init(GPIOD, &GPIO_InitStructure);
+	GPIO_InitTypeDef GPIO_TriggerA;
+	GPIO_TriggerA.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_14 | GPIO_Pin_15;
+	GPIO_TriggerA.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_TriggerA.GPIO_OType = GPIO_OType_PP;
+	GPIO_TriggerA.GPIO_Speed = GPIO_Speed_100MHz;
+	GPIO_TriggerA.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIOD, &GPIO_TriggerA);
 	// Echo, rowniez podlaczone do diody, w tym samym celu.
-	GPIO_InitTypeDef GPIO_InitStructure1;
-	GPIO_InitStructure1.GPIO_Pin = GPIO_Pin_13;
-	GPIO_InitStructure1.GPIO_Mode = GPIO_Mode_IN;
-	GPIO_InitStructure1.GPIO_OType = GPIO_OType_PP;
-	GPIO_InitStructure1.GPIO_Speed = GPIO_Speed_100MHz;
-	GPIO_InitStructure1.GPIO_PuPd = GPIO_PuPd_DOWN;
-	GPIO_Init(GPIOD, &GPIO_InitStructure1);
+	GPIO_InitTypeDef GPIO_EchoA;
+	GPIO_EchoA.GPIO_Pin = GPIO_Pin_13;
+	GPIO_EchoA.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_EchoA.GPIO_OType = GPIO_OType_PP;
+	GPIO_EchoA.GPIO_Speed = GPIO_Speed_100MHz;
+	GPIO_EchoA.GPIO_PuPd = GPIO_PuPd_DOWN;
+	GPIO_Init(GPIOD, &GPIO_EchoA);
 
 	/////DRUGI
-	//    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
 
 	//Trigger, podlaczony poki co do zielonej diody, zeby ladnie bylo widac czy idzie sygnal wysoki, czy nie.
-	//    GPIO_InitTypeDef GPIO_InitStructure3;
-	//    GPIO_InitStructure3.GPIO_Pin = GPIO_Pin_8;
-	//    GPIO_InitStructure3.GPIO_Mode = GPIO_Mode_OUT;
-	//    GPIO_InitStructure3.GPIO_OType = GPIO_OType_PP;
-	//    GPIO_InitStructure3.GPIO_Speed = GPIO_Speed_100MHz;
-	//    GPIO_InitStructure3.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	//    GPIO_Init(GPIOC, &GPIO_InitStructure3);
+	GPIO_InitTypeDef GPIO_TriggerB;
+	GPIO_TriggerB.GPIO_Pin = GPIO_Pin_0;
+	GPIO_TriggerB.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_TriggerB.GPIO_OType = GPIO_OType_PP;
+	GPIO_TriggerB.GPIO_Speed = GPIO_Speed_100MHz;
+	GPIO_TriggerB.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIOB, &GPIO_TriggerB);
 	//// Echo, rowniez podlaczone do diody, w tym samym celu.
-	//    GPIO_InitTypeDef GPIO_InitStructure4;
-	//    GPIO_InitStructure4.GPIO_Pin = GPIO_Pin_9;
-	//    GPIO_InitStructure4.GPIO_Mode = GPIO_Mode_IN;
-	//    GPIO_InitStructure4.GPIO_OType = GPIO_OType_PP;
-	//    GPIO_InitStructure4.GPIO_Speed = GPIO_Speed_100MHz;
-	//    GPIO_InitStructure4.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	//    GPIO_Init(GPIOC, &GPIO_InitStructure4);
+	GPIO_InitTypeDef GPIO_EchoB;
+	GPIO_EchoB.GPIO_Pin = GPIO_Pin_1;
+	GPIO_EchoB.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_EchoB.GPIO_OType = GPIO_OType_PP;
+	GPIO_EchoB.GPIO_Speed = GPIO_Speed_100MHz;
+	GPIO_EchoB.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIOB, &GPIO_EchoB);
 
-//	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
-//	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure9;
-//	TIM_TimeBaseStructure9.TIM_Period = 999;
-//	TIM_TimeBaseStructure9.TIM_Prescaler = 83;
-//	TIM_TimeBaseStructure9.TIM_ClockDivision = TIM_CKD_DIV1;
-//	TIM_TimeBaseStructure9.TIM_CounterMode = TIM_CounterMode_Up;
-//	TIM_TimeBaseInit(TIM2, &TIM_TimeBaseStructure9);
-
-	// Timer4, czestotliwosc 100Hz wydaje sie byc najbardziej przyjazdna dla czujnika. Maksymalna czestotliwosc to 100kHz.
+// Timer 4, czestotliwosc 100Hz wydaje sie byc najbardziej przyjazdna dla czujnika. Maksymalna czestotliwosc to 100kHz.
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
-	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
-	TIM_TimeBaseStructure.TIM_Period = 999;
-	TIM_TimeBaseStructure.TIM_Prescaler = 839;
-	TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;
-	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
-	TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure);
+	TIM_TimeBaseInitTypeDef TIM_TimerA;
+	TIM_TimerA.TIM_Period = 999;
+	TIM_TimerA.TIM_Prescaler = 839;
+	TIM_TimerA.TIM_ClockDivision = TIM_CKD_DIV1;
+	TIM_TimerA.TIM_CounterMode = TIM_CounterMode_Up;
+	TIM_TimeBaseInit(TIM4, &TIM_TimerA);
 	TIM_Cmd(TIM4, ENABLE);
-	NVIC_InitTypeDef NVIC_InitStructure;
-	NVIC_InitStructure.NVIC_IRQChannel = TIM4_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x00;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
+	NVIC_InitTypeDef NVIC_PrzerwanieA;
+	NVIC_PrzerwanieA.NVIC_IRQChannel = TIM4_IRQn;
+	NVIC_PrzerwanieA.NVIC_IRQChannelPreemptionPriority = 0x00;
+	NVIC_PrzerwanieA.NVIC_IRQChannelSubPriority = 0x00;
+	NVIC_PrzerwanieA.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_PrzerwanieA);
 	TIM_ClearITPendingBit(TIM4, TIM_IT_Update);
 	TIM_ITConfig(TIM4, TIM_IT_Update, ENABLE);
+
+	//Timer 5
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM5, ENABLE);
+	TIM_TimeBaseInitTypeDef TIM_TimerB;
+	TIM_TimerB.TIM_Period = 999;
+	TIM_TimerB.TIM_Prescaler = 839;
+	TIM_TimerB.TIM_ClockDivision = TIM_CKD_DIV1;
+	TIM_TimerB.TIM_CounterMode = TIM_CounterMode_Up;
+	TIM_TimeBaseInit(TIM5, &TIM_TimerB);
+	TIM_Cmd(TIM5, ENABLE);
+	NVIC_InitTypeDef NVIC_PrzerwanieB;
+	NVIC_PrzerwanieB.NVIC_IRQChannel = TIM5_IRQn;
+	NVIC_PrzerwanieB.NVIC_IRQChannelPreemptionPriority = 0x00;
+	NVIC_PrzerwanieB.NVIC_IRQChannelSubPriority = 0x00;
+	NVIC_PrzerwanieB.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_PrzerwanieB);
+	TIM_ClearITPendingBit(TIM5, TIM_IT_Update);
+	TIM_ITConfig(TIM5, TIM_IT_Update, ENABLE);
 
 }
 
@@ -107,7 +115,7 @@ void TIM4_IRQHandler(void) {
 			}
 
 			b = a;
-			Distance = b * 0.007;
+		DistanceA = b * 0.007;
 			GPIOD->BSRRL = GPIO_Pin_14;
 
 			Delay(10000);
@@ -116,6 +124,38 @@ void TIM4_IRQHandler(void) {
 
 		}
 	}
+
+void TIM5_IRQHandler(void) {
+	if (TIM_GetITStatus(TIM5, TIM_IT_Update) != RESET) {
+
+		GPIOB->BSRRH = GPIO_Pin_0;
+		Delay(100);
+		GPIOB->BSRRL = GPIO_Pin_0;
+		Delay(500);
+		GPIOB->BSRRH = GPIO_Pin_0;
+
+		c = 0;
+
+		//GPIOB->BSRRH = GPIO_Pin_14;
+
+		while (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_1) == RESET)
+			;
+
+		while (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_1) == SET) {
+			c++;
+			if (c > 100000)
+				break;
+		}
+
+		d = c;
+		DistanceB = d * 0.007;
+		//GPIOD->BSRRL = GPIO_Pin_14;
+
+		Delay(10000);
+		TIM_ClearITPendingBit(TIM5, TIM_IT_Update);
+
+	}
+}
 	int main(void) {
 
 //	 RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA | RCC_AHB1Periph_GPIOB | RCC_AHB1Periph_GPIOC | RCC_AHB1Periph_GPIOD, ENABLE);
@@ -156,37 +196,11 @@ void TIM4_IRQHandler(void) {
 //	 GPIO_SetBits(GPIOD, GPIO_Pin_4);
 
 		deklaracje();
-		while (1)
-			;
-//	{
-//
-//		Delay(100);
-//		GPIOD->BSRRL = GPIO_Pin_12;
-//		Delay(500);
-//		GPIOD->BSRRH = GPIO_Pin_12;
-//
-//		a = 0;
-//
-//		GPIOD->BSRRH = GPIO_Pin_14;
-//
-//		while (GPIO_ReadInputDataBit(GPIOD, GPIO_Pin_13) == RESET)
-//			;
-//
-//		while (GPIO_ReadInputDataBit(GPIOD, GPIO_Pin_13) == SET) {
-//			a++;
-//			if (a > 100000)
-//				break;
-//		}
-//
-//		b = a;
-//		Distance = b * 0.007;
-//		GPIOD->BSRRL = GPIO_Pin_14;
-//
-//		Delay(10000);
-//	}
+	while (1)
+		;
 	}
 
-//
+//////////////////////////////Proby dzwiekowe///////////////////////////////////////////////////////////////
 
 //
 //#include "stm32f4xx.h"
