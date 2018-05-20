@@ -15,7 +15,7 @@ Theremin based on microcontroller and sensors. But what it is? Theremin is an el
 ## How to compile
 
 ## Future improvments
--Simple Delay / Reverb / Overdrive / Volume modulation
+- Simple Delay / Reverb / Overdrive / Volume modulation
 ## Attributions
 
 ## License
