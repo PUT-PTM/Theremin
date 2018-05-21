@@ -4,11 +4,10 @@
 double ADC_Result;
 double solution;
 int iter;
-float Distance;
 unsigned int TIM2_CNT;
 unsigned int TIM4_CNT;
-//float DistanceA, DistanceB;
-//unsigned int a, b, c, d;
+float DistanceA, DistanceB;
+unsigned int a, b, c, d;
 
 void Delay(uint32_t i) {
 	static uint32_t ij = 0, j = 0;
@@ -61,7 +60,7 @@ void TIM4_IRQHandler(void) {
 		}
 
 		b = a;
-		Distance = b * 0.007;
+		DistanceA = b * 0.007;
 		GPIOD->BSRRL = GPIO_Pin_14;
 
 		Delay(10000);
@@ -71,37 +70,37 @@ void TIM4_IRQHandler(void) {
 	}
 }
 
-//void TIM5_IRQHandler(void) {
-//	if (TIM_GetITStatus(TIM5, TIM_IT_Update) != RESET) {
-//
-//		GPIOB->BSRRH = GPIO_Pin_0;
-//		Delay(100);
-//		GPIOB->BSRRL = GPIO_Pin_0;
-//		Delay(500);
-//		GPIOB->BSRRH = GPIO_Pin_0;
-//
-//		c = 0;
-//
-//		//GPIOB->BSRRH = GPIO_Pin_14;
-//
-//		while (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_1) == RESET)
-//			;
-//
-//		while (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_1) == SET) {
-//			c++;
-//			if (c > 100000)
-//				break;
-//		}
-//
-//		d = c;
-//		DistanceB = d * 0.007;
-//		//GPIOD->BSRRL = GPIO_Pin_14;
-//
-//		Delay(10000);
-//		TIM_ClearITPendingBit(TIM5, TIM_IT_Update);
-//
-//	}
-//}
+void TIM5_IRQHandler(void) {
+	if (TIM_GetITStatus(TIM5, TIM_IT_Update) != RESET) {
+
+		GPIOB->BSRRH = GPIO_Pin_0;
+		Delay(100);
+		GPIOB->BSRRL = GPIO_Pin_0;
+		Delay(500);
+		GPIOB->BSRRH = GPIO_Pin_0;
+
+		c = 0;
+
+		//GPIOB->BSRRH = GPIO_Pin_14;
+
+		while (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_1) == RESET)
+			;
+
+		while (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_1) == SET) {
+			c++;
+			if (c > 100000)
+				break;
+		}
+
+		d = c;
+		DistanceB = d * 0.007;
+		//GPIOD->BSRRL = GPIO_Pin_14;
+
+		Delay(10000);
+		TIM_ClearITPendingBit(TIM5, TIM_IT_Update);
+
+	}
+}
 
 int main(void) {
 	SystemInit();
@@ -192,7 +191,7 @@ int main(void) {
 ////Timer 4, czestotliwosc 100Hz wydaje sie byc najbardziej przyjazdna dla czujnika. Maksymalna czestotliwosc to 100kHz.
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
 	TIM_TimeBaseInitTypeDef TIM_TimerA;
-	TIM_TimerA.TIM_Period = 999;
+	TIM_TimerA.TIM_Period = 9999;
 	TIM_TimerA.TIM_Prescaler = 839;
 	TIM_TimerA.TIM_ClockDivision = TIM_CKD_DIV1;
 	TIM_TimerA.TIM_CounterMode = TIM_CounterMode_Up;
@@ -207,43 +206,44 @@ int main(void) {
 	TIM_ClearITPendingBit(TIM4, TIM_IT_Update);
 	TIM_ITConfig(TIM4, TIM_IT_Update, ENABLE);
 /////////////////////////////////////////HC-SR04 nr 2////////////////////////////////
-	
-	//	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
-	//
-	//	//Trigger
-	//	GPIO_InitTypeDef GPIO_TriggerB;
-	//	GPIO_TriggerB.GPIO_Pin = GPIO_Pin_0;
-	//	GPIO_TriggerB.GPIO_Mode = GPIO_Mode_OUT;
-	//	GPIO_TriggerB.GPIO_OType = GPIO_OType_PP;
-	//	GPIO_TriggerB.GPIO_Speed = GPIO_Speed_100MHz;
-	//	GPIO_TriggerB.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	//	GPIO_Init(GPIOB, &GPIO_TriggerB);
-	//	//// Echo
-	//	GPIO_InitTypeDef GPIO_EchoB;
-	//	GPIO_EchoB.GPIO_Pin = GPIO_Pin_1;
-	//	GPIO_EchoB.GPIO_Mode = GPIO_Mode_IN;
-	//	GPIO_EchoB.GPIO_OType = GPIO_OType_PP;
-	//	GPIO_EchoB.GPIO_Speed = GPIO_Speed_100MHz;
-	//	GPIO_EchoB.GPIO_PuPd = GPIO_PuPd_NOPULL;
-	//	GPIO_Init(GPIOB, &GPIO_EchoB);
-	
-	//Timer 5
-	//	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM5, ENABLE);
-	//	TIM_TimeBaseInitTypeDef TIM_TimerB;
-	//	TIM_TimerB.TIM_Period = 999;
-	//	TIM_TimerB.TIM_Prescaler = 839;
-	//	TIM_TimerB.TIM_ClockDivision = TIM_CKD_DIV1;
-	//	TIM_TimerB.TIM_CounterMode = TIM_CounterMode_Up;
-	//	TIM_TimeBaseInit(TIM5, &TIM_TimerB);
-	//	TIM_Cmd(TIM5, ENABLE);
-	//	NVIC_InitTypeDef NVIC_PrzerwanieB;
-	//	NVIC_PrzerwanieB.NVIC_IRQChannel = TIM5_IRQn;
-	//	NVIC_PrzerwanieB.NVIC_IRQChannelPreemptionPriority = 0x00;
-	//	NVIC_PrzerwanieB.NVIC_IRQChannelSubPriority = 0x00;
-	//	NVIC_PrzerwanieB.NVIC_IRQChannelCmd = ENABLE;
-	//	NVIC_Init(&NVIC_PrzerwanieB);
-	//	TIM_ClearITPendingBit(TIM5, TIM_IT_Update);
-	//	TIM_ITConfig(TIM5, TIM_IT_Update, ENABLE);
+
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE);
+
+////    Trigger
+	GPIO_InitTypeDef GPIO_TriggerB;
+	GPIO_TriggerB.GPIO_Pin = GPIO_Pin_0;
+	GPIO_TriggerB.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_TriggerB.GPIO_OType = GPIO_OType_PP;
+	GPIO_TriggerB.GPIO_Speed = GPIO_Speed_100MHz;
+	GPIO_TriggerB.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIOB, &GPIO_TriggerB);
+
+////	Echo
+	GPIO_InitTypeDef GPIO_EchoB;
+	GPIO_EchoB.GPIO_Pin = GPIO_Pin_1;
+	GPIO_EchoB.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_EchoB.GPIO_OType = GPIO_OType_PP;
+	GPIO_EchoB.GPIO_Speed = GPIO_Speed_100MHz;
+	GPIO_EchoB.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIOB, &GPIO_EchoB);
+
+////	Timer 5
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM5, ENABLE);
+	TIM_TimeBaseInitTypeDef TIM_TimerB;
+	TIM_TimerB.TIM_Period = 9999;
+	TIM_TimerB.TIM_Prescaler = 839;
+	TIM_TimerB.TIM_ClockDivision = TIM_CKD_DIV1;
+	TIM_TimerB.TIM_CounterMode = TIM_CounterMode_Up;
+	TIM_TimeBaseInit(TIM5, &TIM_TimerB);
+	TIM_Cmd(TIM5, ENABLE);
+	NVIC_InitTypeDef NVIC_PrzerwanieB;
+	NVIC_PrzerwanieB.NVIC_IRQChannel = TIM5_IRQn;
+	NVIC_PrzerwanieB.NVIC_IRQChannelPreemptionPriority = 0x00;
+	NVIC_PrzerwanieB.NVIC_IRQChannelSubPriority = 0x00;
+	NVIC_PrzerwanieB.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_PrzerwanieB);
+	TIM_ClearITPendingBit(TIM5, TIM_IT_Update);
+	TIM_ITConfig(TIM5, TIM_IT_Update, ENABLE);
 
 	iter = 0;
 
@@ -258,7 +258,7 @@ int main(void) {
 		while (ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC) == RESET)
 			;
 		ADC_Result = ADC_GetConversionValue(ADC1);
-		TIM3->ARR = (int) (20 * (Distance / 0.8)); //rejestr od period i go regulujemy
+		TIM3->ARR = (int) (20 * (DistanceA / 0.8)); //rejestr od period i go regulujemy
 	}
 
 }
