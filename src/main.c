@@ -4,10 +4,19 @@
 double ADC_Result;
 double solution;
 int iter;
+int volume;
 unsigned int TIM2_CNT;
 unsigned int TIM4_CNT;
-float DistanceA, DistanceB;
+float DistanceA;
+int DistanceB;
 unsigned int a, b, c, d;
+unsigned int period;
+int mark = 0;
+int delayMilliseconds = 500;
+int delaySamples = 200;
+int i;
+uint16_t decay = 0x0a;
+uint16_t buffer[2048]; // nie wiem czy jak tak zapisze to wypelni sie caly buffer czy tylko jeden element
 
 void Delay(uint32_t i) {
 	static uint32_t ij = 0, j = 0;
@@ -16,27 +25,61 @@ void Delay(uint32_t i) {
 			;
 }
 void TIM3_IRQHandler(void) {
+
 	if (TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET) {
 
-		if (iter == 2048)
-			iter = 0;
-
-		DAC_SetChannel1Data(DAC_Align_12b_R, rawAudio[iter]); // *ADC_Result/1000
-		++iter;
 //		if (iter == 2048)
 //			iter = 0;
+		if (period < 60) {
+			for (iter = 0; iter < 2048; iter++)
+				DAC_SetChannel1Data(DAC_Align_12b_R, rawAudio[iter] / volume); // *ADC_Result/1000
+			//	iter++;
+		}
+		//        if (iter == 2048)
+//            iter = 0;
 //
-//		DAC_SetChannel1Data(DAC_Align_12b_R,
-//				rawAudio[iter] * ADC_Result / 1000); // regulacja glosnosci adcresult
-//		++iter;
-
-		TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
+//        DAC_SetChannel1Data(DAC_Align_12b_R,
+//                rawAudio[iter] * ADC_Result / 1000); // regulacja glosnosci adcresult
+//        ++iter;
 	}
+	TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
+
+//	if (TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET) {
+//
+//		if (iter == 2048)
+//			iter = 0;
+//		for (int i = 0; i < 2048; i++) {
+//			buffer[i] = rawAudio[i]; //kopiuje sinusoide do nowej tablicy
+//		} // assumes 44100 Hz sample rate - tu nie jestem 100% pewny o czego czestotliwosc chodzi xD
+//		for (i = 0; i < (2048 - delaySamples); i++) {
+//			// WARNING: overflow potential
+//			if((i + delaySamples)<2047){
+//
+//			buffer[i + delaySamples] = (buffer[i] * decay); //powstaje "delay line"(?)
+//		}
+//		}
+//		if (DistanceB > 10 && DistanceB < 50) { //jesli wartosc na drugim czujniku sie zgadza to odtwarzaj z tablicy z dodanym efektem
+//			DAC_SetChannel1Data(DAC_Align_12b_R, buffer[iter]); // *ADC_Result/1000
+//			++iter;
+//		} else {
+//			DAC_SetChannel1Data(DAC_Align_12b_R, rawAudio[iter]); // *ADC_Result/1000
+//			++iter;
+//		}
+////        if (iter == 2048)
+////            iter = 0;
+////
+////        DAC_SetChannel1Data(DAC_Align_12b_R,
+////                rawAudio[iter] * ADC_Result / 1000); // regulacja glosnosci adcresult
+////        ++iter;
+//	}
+//		TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
+
+
 }
 
 void TIM4_IRQHandler(void) {
 	if (TIM_GetITStatus(TIM4, TIM_IT_Update) != RESET) {
-
+		// period = (int) (20 * (DistanceA / 0.8));
 		GPIOD->BSRRH = GPIO_Pin_12;
 		Delay(100);
 		TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
@@ -62,9 +105,9 @@ void TIM4_IRQHandler(void) {
 		b = a;
 		DistanceA = b * 0.007;
 		GPIOD->BSRRL = GPIO_Pin_14;
-
+		period = ((int) (11 + (DistanceA * 0.8)));
+		TIM3->ARR = period;
 		Delay(10000);
-
 		TIM_ClearITPendingBit(TIM4, TIM_IT_Update);
 
 	}
@@ -94,8 +137,19 @@ void TIM5_IRQHandler(void) {
 
 		d = c;
 		DistanceB = d * 0.007;
-		//GPIOD->BSRRL = GPIO_Pin_14;
+		if (DistanceB > 50)
+			volume = 1000;
+		else if (DistanceB <= 50)
+			volume = DistanceB * 20;
 
+		//GPIOD->BSRRL = GPIO_Pin_14;
+//		if (DistanceB < 60 && mark == 0) {
+//			mark = 1;
+//			TIM_Cmd(TIM3, DISABLE);
+//		} else if (DistanceB > 60 && mark == 1) {
+//			mark = 0;
+//			TIM_Cmd(TIM3, ENABLE);
+//		}
 		Delay(10000);
 		TIM_ClearITPendingBit(TIM5, TIM_IT_Update);
 
@@ -104,7 +158,8 @@ void TIM5_IRQHandler(void) {
 
 int main(void) {
 	SystemInit();
-
+	period = 10;
+	volume = 10.0;
 	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_DAC, ENABLE);
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
@@ -120,15 +175,14 @@ int main(void) {
 
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure3;
 	TIM_TimeBaseStructure3.TIM_Period = 20;
-	TIM_TimeBaseStructure3.TIM_Prescaler = 0;
+	TIM_TimeBaseStructure3.TIM_Prescaler = period;
 	TIM_TimeBaseStructure3.TIM_ClockDivision = TIM_CKD_DIV1;
 	TIM_TimeBaseStructure3.TIM_CounterMode = TIM_CounterMode_Up;
 	TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure3);
-	TIM_Cmd(TIM3, ENABLE);
 
 	NVIC_InitTypeDef NVIC_InitStructure3;
 	NVIC_InitStructure3.NVIC_IRQChannel = TIM3_IRQn;
-	NVIC_InitStructure3.NVIC_IRQChannelPreemptionPriority = 0x00;
+	NVIC_InitStructure3.NVIC_IRQChannelPreemptionPriority = 0x01;
 	NVIC_InitStructure3.NVIC_IRQChannelSubPriority = 0x00;
 	NVIC_InitStructure3.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure3);
@@ -191,15 +245,15 @@ int main(void) {
 ////Timer 4, czestotliwosc 100Hz wydaje sie byc najbardziej przyjazdna dla czujnika. Maksymalna czestotliwosc to 100kHz.
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
 	TIM_TimeBaseInitTypeDef TIM_TimerA;
-	TIM_TimerA.TIM_Period = 9999;
-	TIM_TimerA.TIM_Prescaler = 839;
+	TIM_TimerA.TIM_Period = 9;
+	TIM_TimerA.TIM_Prescaler = 83;
 	TIM_TimerA.TIM_ClockDivision = TIM_CKD_DIV1;
 	TIM_TimerA.TIM_CounterMode = TIM_CounterMode_Up;
 	TIM_TimeBaseInit(TIM4, &TIM_TimerA);
 	TIM_Cmd(TIM4, ENABLE);
 	NVIC_InitTypeDef NVIC_PrzerwanieA;
 	NVIC_PrzerwanieA.NVIC_IRQChannel = TIM4_IRQn;
-	NVIC_PrzerwanieA.NVIC_IRQChannelPreemptionPriority = 0x00;
+	NVIC_PrzerwanieA.NVIC_IRQChannelPreemptionPriority = 0x01;
 	NVIC_PrzerwanieA.NVIC_IRQChannelSubPriority = 0x00;
 	NVIC_PrzerwanieA.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_PrzerwanieA);
@@ -218,7 +272,7 @@ int main(void) {
 	GPIO_TriggerB.GPIO_PuPd = GPIO_PuPd_NOPULL;
 	GPIO_Init(GPIOB, &GPIO_TriggerB);
 
-////	Echo
+////    Echo
 	GPIO_InitTypeDef GPIO_EchoB;
 	GPIO_EchoB.GPIO_Pin = GPIO_Pin_1;
 	GPIO_EchoB.GPIO_Mode = GPIO_Mode_IN;
@@ -227,18 +281,18 @@ int main(void) {
 	GPIO_EchoB.GPIO_PuPd = GPIO_PuPd_NOPULL;
 	GPIO_Init(GPIOB, &GPIO_EchoB);
 
-////	Timer 5
+////    Timer 5
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM5, ENABLE);
 	TIM_TimeBaseInitTypeDef TIM_TimerB;
-	TIM_TimerB.TIM_Period = 9999;
-	TIM_TimerB.TIM_Prescaler = 839;
+	TIM_TimerB.TIM_Period = 9;
+	TIM_TimerB.TIM_Prescaler = 83;
 	TIM_TimerB.TIM_ClockDivision = TIM_CKD_DIV1;
 	TIM_TimerB.TIM_CounterMode = TIM_CounterMode_Up;
 	TIM_TimeBaseInit(TIM5, &TIM_TimerB);
 	TIM_Cmd(TIM5, ENABLE);
 	NVIC_InitTypeDef NVIC_PrzerwanieB;
 	NVIC_PrzerwanieB.NVIC_IRQChannel = TIM5_IRQn;
-	NVIC_PrzerwanieB.NVIC_IRQChannelPreemptionPriority = 0x00;
+	NVIC_PrzerwanieB.NVIC_IRQChannelPreemptionPriority = 0x01;
 	NVIC_PrzerwanieB.NVIC_IRQChannelSubPriority = 0x00;
 	NVIC_PrzerwanieB.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_PrzerwanieB);
@@ -246,19 +300,139 @@ int main(void) {
 	TIM_ITConfig(TIM5, TIM_IT_Update, ENABLE);
 
 	iter = 0;
-
+	TIM_Cmd(TIM3, ENABLE);
 	for (;;) {
 
-//		ADC_SoftwareStartConv(ADC1);
-//		while (ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC) == RESET)
-//			;
-//		ADC_Result = ADC_GetConversionValue(ADC1);
-//		solution = (ADC_Result * 2.95) / 4095;
+//        ADC_SoftwareStartConv(ADC1);
+//        while (ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC) == RESET)
+//            ;
+//        ADsC_Result = ADC_GetConversionValue(ADC1);
+//        solution = (ADC_Result * 2.95) / 4095;
 		ADC_SoftwareStartConv(ADC1);
 		while (ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC) == RESET)
 			;
 		ADC_Result = ADC_GetConversionValue(ADC1);
-		TIM3->ARR = (int) (20 * (DistanceA / 0.8)); //rejestr od period i go regulujemy
+//		period = ((int) (11 + (DistanceA * 0.8)));
+//		TIM3->ARR = period; //rejestr od period i go regulujemy
+		//TIM3->PSC = (int) (11 + (DistanceA / 0.8));
+
 	}
 
 }
+
+//
+//#include "stm32f4xx.h"
+//#include "stm32f4_discovery.h"
+//#include "Audio2.h"
+//double ADC_Result;
+//double solution;
+//int iter;
+//
+//
+//
+//void TIM3_IRQHandler(void) {
+//	if (TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET) {
+//
+//		if (iter == 2048)
+//			iter = 0;
+//
+//		DAC_SetChannel1Data(DAC_Align_12b_R, rawAudio[iter]); // *ADC_Result/1000
+//		++iter;
+//
+//
+//		TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
+//	}
+//}
+//
+//int main(void) {
+//	SystemInit();
+//
+//	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+//	RCC_APB1PeriphClockCmd(RCC_APB1Periph_DAC, ENABLE);
+//	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
+//	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+//	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
+//
+//	GPIO_InitTypeDef GPIO_InitStructure;
+//	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4 | GPIO_Pin_1;
+//	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
+//	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
+//	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+//	GPIO_Init(GPIOA, &GPIO_InitStructure);
+//
+//
+//	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure3;
+//	TIM_TimeBaseStructure3.TIM_Period = 250;
+//	TIM_TimeBaseStructure3.TIM_Prescaler = 0;
+//	TIM_TimeBaseStructure3.TIM_ClockDivision = TIM_CKD_DIV1;
+//	TIM_TimeBaseStructure3.TIM_CounterMode = TIM_CounterMode_Up;
+//	TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure3);
+//
+//	TIM_Cmd(TIM3, ENABLE);
+//
+//	NVIC_InitTypeDef NVIC_InitStructure3;
+//	NVIC_InitStructure3.NVIC_IRQChannel = TIM3_IRQn;
+//	NVIC_InitStructure3.NVIC_IRQChannelPreemptionPriority = 0x00;
+//	NVIC_InitStructure3.NVIC_IRQChannelSubPriority = 0x00;
+//	NVIC_InitStructure3.NVIC_IRQChannelCmd = ENABLE;
+//	NVIC_Init(&NVIC_InitStructure3);
+//
+//
+//
+//	TIM_ClearITPendingBit(TIM3, TIM_IT_Update);
+//	TIM_ITConfig(TIM3, TIM_IT_Update, ENABLE);
+//
+//	//konfiguracja wszystkich ADC
+//	ADC_CommonInitTypeDef ADC_CommonInitStructure;
+//	ADC_CommonInitStructure.ADC_Mode = ADC_Mode_Independent;
+//	ADC_CommonInitStructure.ADC_Prescaler = ADC_Prescaler_Div2;
+//	ADC_CommonInitStructure.ADC_DMAAccessMode = ADC_DMAAccessMode_Disabled;
+//	ADC_CommonInitStructure.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_5Cycles;
+//	ADC_CommonInit(&ADC_CommonInitStructure);
+//
+//
+//	//konfiguracja danego pretwornika
+//	ADC_InitTypeDef ADC_InitStructure;
+//	ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b;
+//	ADC_InitStructure.ADC_ScanConvMode = DISABLE;
+//	ADC_InitStructure.ADC_ContinuousConvMode = ENABLE;
+//	ADC_InitStructure.ADC_ExternalTrigConv = ADC_ExternalTrigConv_T1_CC1;
+//	ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None;
+//	ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
+//	ADC_InitStructure.ADC_NbrOfConversion = 1;
+//	ADC_Init(ADC1, &ADC_InitStructure);
+//
+//	ADC_RegularChannelConfig(ADC1, ADC_Channel_1, 1, ADC_SampleTime_84Cycles);
+//	ADC_Cmd(ADC1, ENABLE);
+//
+//
+//	DAC_InitTypeDef DAC_InitStructure;
+//	DAC_InitStructure.DAC_Trigger = DAC_Trigger_None;
+//	DAC_InitStructure.DAC_WaveGeneration = DAC_WaveGeneration_None;
+//	DAC_InitStructure.DAC_LFSRUnmask_TriangleAmplitude = DAC_LFSRUnmask_Bit0;
+//	DAC_InitStructure.DAC_OutputBuffer = DAC_OutputBuffer_Enable;
+//	DAC_Init(DAC_Channel_1, &DAC_InitStructure);
+//
+//
+//	DAC_Cmd(DAC_Channel_1, ENABLE);
+//
+//
+//	iter = 0;
+//
+//	for (;;) {
+//
+//
+//		ADC_SoftwareStartConv(ADC1);
+//		while (ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC) == RESET)
+//			;
+//		ADC_Result = ADC_GetConversionValue(ADC1);
+//		solution = (ADC_Result * 2.95) / (4095);
+//		if (solution >= 1)
+//			TIM3->ARR = (int) (250 * solution); //rejestr od period i go regulujemy
+//		else
+//			solution = 1;
+//	}
+//
+//}
+
+
